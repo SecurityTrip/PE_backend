@@ -1,4 +1,1 @@
-
-
-rootProject.name="PE_backend"
-
+rootProject.name = "sea_battle"
