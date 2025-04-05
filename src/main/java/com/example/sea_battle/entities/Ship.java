@@ -8,7 +8,8 @@ public class Ship {
     private boolean isDead;
     private int blockCounter;
 
-    public Ship(ShipType type, List<ShipBlock> shipBlocks) {
+    // TODO Make correct constructor for ships
+    public Ship(ShipType type) {
         this.type = type;
         this.shipBlocks = shipBlocks;
         this.isDead = false;

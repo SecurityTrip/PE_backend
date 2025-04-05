@@ -1,4 +1,4 @@
-package com.example.sea_battle.entities;
+package com.example.sea_battle.entities.schemas;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -6,11 +6,11 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 
 @Entity
-public class Avatars {
+public class Matches {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
-    private String avatarBitMap;
+    private Long winner;
 
     public void setId(Long id) {
         this.id = id;
@@ -20,11 +20,11 @@ public class Avatars {
         return id;
     }
 
-    public String getAvatarBitMap() {
-        return avatarBitMap;
+    public long getWinner() {
+        return winner;
     }
 
-    public void setAvatarBitMap(String avatarBitMap) {
-        this.avatarBitMap = avatarBitMap;
+    public void setWinner(long winner) {
+        this.winner = winner;
     }
 }

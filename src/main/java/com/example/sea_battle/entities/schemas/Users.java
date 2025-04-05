@@ -1,4 +1,4 @@
-package com.example.sea_battle.entities;
+package com.example.sea_battle.entities.schemas;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
