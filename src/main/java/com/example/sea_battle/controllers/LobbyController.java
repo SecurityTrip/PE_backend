@@ -5,7 +5,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Контроллер лоббби")
+@Tag(name = "Контроллер лобби")
 @RestController
 @RequestMapping("/lobby")
 public class LobbyController {
