@@ -40,4 +40,18 @@ public class JwtCore {
                 .parseSignedClaims(jwt)
                 .getPayload();
     }
+
+    public String getUsernameFromJwt(String jwt) {
+        return getNameFromJwt(jwt).getSubject();
+    }
+
+    public String refreshToken(String jwt) {
+        Claims claims = getNameFromJwt(jwt);
+        return Jwts.builder()
+                .subject(claims.getSubject())
+                .issuedAt(new Date())
+                .expiration(new Date((new Date()).getTime() + lifetime))
+                .signWith(key)
+                .compact();
+    }
 }

@@ -2,11 +2,13 @@ package com.example.sea_battle.services;
 
 import com.example.sea_battle.jwt.JwtCore;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Date;
 
 @Component
 @SuppressWarnings("unused")
@@ -24,6 +27,9 @@ public class TokenFilter extends OncePerRequestFilter {
     
     @Autowired
     private UserDetailsService userDetailsService;
+
+    @Value("${sea_battle.app.lifetime}")
+    private long tokenLifetime;
 
     @Override
     @SuppressWarnings("unchecked")
@@ -40,7 +46,16 @@ public class TokenFilter extends OncePerRequestFilter {
             }
             if (jwt != null) {
                 try {
-                    username = String.valueOf(jwtCore.getNameFromJwt(jwt));
+                    username = jwtCore.getUsernameFromJwt(jwt);
+                    Claims claims = jwtCore.getNameFromJwt(jwt);
+                    Date expiration = claims.getExpiration();
+                    Date now = new Date();
+                    
+                    // Если до истечения токена осталось менее 30% времени
+                    if (expiration.getTime() - now.getTime() < tokenLifetime * 0.3) {
+                        String newToken = jwtCore.refreshToken(jwt);
+                        response.setHeader("Authorization", "Bearer " + newToken);
+                    }
                 } catch (ExpiredJwtException e) {
                     logger.warn("JWT token has expired", e);
                 }

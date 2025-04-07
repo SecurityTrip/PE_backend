@@ -75,4 +75,18 @@ public class AuthController {
         return ResponseEntity.ok(token);
     }
 
+    @PostMapping("/refresh")
+    ResponseEntity<?> refreshToken(@RequestHeader("Authorization") String authHeader) {
+        try {
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String jwt = authHeader.substring(7);
+                String newToken = jwtCore.refreshToken(jwt);
+                return ResponseEntity.ok(newToken);
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid authorization header");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or expired token");
+        }
+    }
+
 }
