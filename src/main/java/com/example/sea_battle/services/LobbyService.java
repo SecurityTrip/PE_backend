@@ -44,6 +44,7 @@ public class LobbyService {
     }
 
     // Получение списка доступных публичных лобби
+    @Transactional(readOnly = true)
     public List<LobbyDTO> getPublicLobbies() {
         return lobbyRepository.findByIsPrivateFalseAndStatus(Lobby.LobbyStatus.WAITING)
                 .stream()
@@ -52,6 +53,7 @@ public class LobbyService {
     }
 
     // Получение лобби по ID
+    @Transactional(readOnly = true)
     public Optional<LobbyDTO> getLobbyById(String lobbyId) {
         return lobbyRepository.findByLobbyID(lobbyId)
                 .map(this::convertToDTO);
@@ -152,6 +154,7 @@ public class LobbyService {
     }
 
     // Получение списка лобби, в которых участвует игрок
+    @Transactional(readOnly = true)
     public List<LobbyDTO> getPlayerLobbies(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Пользователь не найден"));

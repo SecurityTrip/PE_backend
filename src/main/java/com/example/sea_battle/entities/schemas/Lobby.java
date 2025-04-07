@@ -2,16 +2,14 @@ package com.example.sea_battle.entities.schemas;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Getter
-@Setter
+@Data
 public class Lobby {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,12 +32,13 @@ public class Lobby {
     
     private int maxPlayers = 2;
     
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
         name = "lobby_players",
         joinColumns = @JoinColumn(name = "lobby_id"),
         inverseJoinColumns = @JoinColumn(name = "user_id")
     )
+    @ToString.Exclude
     private Set<User> players = new HashSet<>();
     
     private LocalDateTime createdAt;
