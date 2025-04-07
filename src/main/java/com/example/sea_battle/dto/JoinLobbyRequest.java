@@ -6,7 +6,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class SigninRequest {
-    private String username;
+public class JoinLobbyRequest {
+    private String lobbyID;
     private String password;
-}
+} 

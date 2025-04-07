@@ -5,6 +5,7 @@ import com.example.sea_battle.dto.SignupRequest;
 import com.example.sea_battle.entities.schemas.User;
 import com.example.sea_battle.jwt.JwtCore;
 import com.example.sea_battle.repositories.UserRepository;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -49,6 +50,7 @@ public class AuthController {
     }
 
     @PostMapping("/signup")
+    @Operation(summary = "Регистрация")
     ResponseEntity<?> signUp(@RequestBody SignupRequest signupRequest) {
         if (userRepository.existsByUsername(signupRequest.getUsername())) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Username is already in use");
@@ -63,6 +65,7 @@ public class AuthController {
     }
 
     @PostMapping("/signin")
+    @Operation(summary = "Аутентификация")
     ResponseEntity<?> signIn(@RequestBody SigninRequest signinRequest) {
         Authentication authentication = null;
         try {
@@ -76,6 +79,7 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
+    @Operation(summary = "Обновление JWT токена")
     ResponseEntity<?> refreshToken(@RequestHeader("Authorization") String authHeader) {
         try {
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
