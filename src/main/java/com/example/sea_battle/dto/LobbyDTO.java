@@ -19,4 +19,5 @@ public class LobbyDTO {
     private int maxPlayers;
     private List<String> players;
     private LocalDateTime createdAt;
-} 
+    private String gameId;
+}

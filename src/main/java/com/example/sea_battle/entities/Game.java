@@ -27,12 +27,13 @@ public class Game {
     private List<GameBoard> boards = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
-    private GameStatus status = GameStatus.IN_PROGRESS;
+    private GameStatus status = GameStatus.WAITING;
 
     private int turnNumber = 0;
 
     public enum GameStatus {
-        IN_PROGRESS,
-        FINISHED
+        WAITING,    // Ожидание готовности игроков
+        IN_PROGRESS,// Игра в процессе
+        FINISHED    // Игра завершена
     }
 } 

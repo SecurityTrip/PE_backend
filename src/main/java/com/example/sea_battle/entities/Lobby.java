@@ -43,6 +43,9 @@ public class Lobby {
     
     private LocalDateTime createdAt;
     
+    @OneToOne(mappedBy = "lobby")
+    private Game game;
+    
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

@@ -1,10 +1,12 @@
 package com.example.sea_battle.controllers;
 
+import com.example.sea_battle.dto.AuthResponse;
 import com.example.sea_battle.dto.SigninRequest;
 import com.example.sea_battle.dto.SignupRequest;
 import com.example.sea_battle.entities.User;
 import com.example.sea_battle.jwt.JwtCore;
 import com.example.sea_battle.repositories.UserRepository;
+import com.example.sea_battle.services.UserDetailsImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +19,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-
 
 @Tag(name = "Контроллер регистрации", description = "Содержит методы для авторизации")
 @RestController
@@ -61,7 +62,17 @@ public class AuthController {
         user.setPassword(passwordEncoder.encode(signupRequest.getPassword()));
         user.setAvatar(signupRequest.getAvatar());
         userRepository.save(user);
-        return ResponseEntity.status(HttpStatus.CREATED).body(user.getUsername());
+
+        // Создаем токен для нового пользователя
+        Authentication authentication = authenticationManager.authenticate(
+            new UsernamePasswordAuthenticationToken(signupRequest.getUsername(), signupRequest.getPassword())
+        );
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        String token = jwtCore.generateToken(authentication);
+
+        // Возвращаем ответ с токеном и id пользователя
+        AuthResponse response = new AuthResponse(token, user.getId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/signin")
@@ -69,13 +80,22 @@ public class AuthController {
     ResponseEntity<?> signIn(@RequestBody SigninRequest signinRequest) {
         Authentication authentication = null;
         try {
-            authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(signinRequest.getUsername(), signinRequest.getPassword()));
+            authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(signinRequest.getUsername(), signinRequest.getPassword())
+            );
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         }
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String token = jwtCore.generateToken(authentication);
-        return ResponseEntity.ok(token);
+
+        // Получаем id пользователя
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        Long userId = userDetails.getId();
+
+        // Возвращаем ответ с токеном и id пользователя
+        AuthResponse response = new AuthResponse(token, userId);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/refresh")
@@ -92,5 +112,4 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or expired token");
         }
     }
-
 }

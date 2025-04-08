@@ -18,6 +18,7 @@ public class GameDTO {
     public static class GameBoardDTO {
         private Long id;
         private String player;
+        private boolean ready;
         private List<ShipDTO> ships;
         private List<ShotDTO> shots;
 

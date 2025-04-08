@@ -1,14 +1,17 @@
 package com.example.sea_battle.services;
 
 import com.example.sea_battle.jwt.JwtCore;
-import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,55 +25,64 @@ import java.util.Date;
 @Component
 @SuppressWarnings("unused")
 public class TokenFilter extends OncePerRequestFilter {
+    private static final Logger logger = LoggerFactory.getLogger(TokenFilter.class);
+
     @Autowired
     private JwtCore jwtCore;
-    
+
     @Autowired
     private UserDetailsService userDetailsService;
-
-    @Value("${sea_battle.app.lifetime}")
-    private long tokenLifetime;
+    
+    private final long tokenLifetime = 60 * 60 * 1000; // 1 час
 
     @Override
     @SuppressWarnings("unchecked")
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        String jwt = null;
-        String username = null;
-        UserDetails userDetails = null;
-        UsernamePasswordAuthenticationToken authentication = null;
-
         try {
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                jwt = authHeader.substring(7);
-            }
+            String jwt = getJwtFromRequest(request);
+            String username = null;
+            
             if (jwt != null) {
                 try {
                     username = jwtCore.getUsernameFromJwt(jwt);
                     Claims claims = jwtCore.getNameFromJwt(jwt);
-                    Date expiration = claims.getExpiration();
-                    Date now = new Date();
                     
-                    // Если до истечения токена осталось менее 30% времени
-                    if (expiration.getTime() - now.getTime() < tokenLifetime * 0.3) {
-                        String newToken = jwtCore.refreshToken(jwt);
-                        response.setHeader("Authorization", "Bearer " + newToken);
+                    if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                userDetails, null, userDetails.getAuthorities());
+                        
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                        logger.debug("Аутентификация успешна для пользователя: {}", username);
                     }
                 } catch (ExpiredJwtException e) {
-                    logger.warn("JWT token has expired", e);
-                }
-                if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    userDetails = userDetailsService.loadUserByUsername(username);
-                    authentication = new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            userDetails.getAuthorities());
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    logger.warn("JWT token истек: {}", e.getMessage());
                 }
             }
         } catch (Exception e) {
-            logger.error("Error processing JWT token", e);
+            logger.error("Не удалось установить аутентификацию пользователя: {}", e.getMessage());
         }
+        
         filterChain.doFilter(request, response);
+    }
+    
+    private String getJwtFromRequest(HttpServletRequest request) {
+        // Проверяем Authorization заголовок
+        String bearerToken = request.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        
+        // Если заголовок не найден, проверяем куки (для SSE)
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("auth_token".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        
+        return null;
     }
 }

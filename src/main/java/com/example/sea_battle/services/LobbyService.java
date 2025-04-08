@@ -8,6 +8,9 @@ import com.example.sea_battle.entities.User;
 import com.example.sea_battle.repositories.GameRepository;
 import com.example.sea_battle.repositories.LobbyRepository;
 import com.example.sea_battle.repositories.UserRepository;
+import com.example.sea_battle.services.sse.LobbyEventService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,17 +22,23 @@ import java.util.stream.Collectors;
 
 @Service
 public class LobbyService {
+    private static final Logger logger = LoggerFactory.getLogger(LobbyService.class);
+    
     private final LobbyRepository lobbyRepository;
     private final UserRepository userRepository;
     private final GameRepository gameRepository;
+    private final LobbyEventService lobbyEventService;
 
     @Autowired
     public LobbyService(LobbyRepository lobbyRepository, 
                        UserRepository userRepository,
-                       GameRepository gameRepository) {
+                       GameRepository gameRepository,
+                       LobbyEventService lobbyEventService) {
         this.lobbyRepository = lobbyRepository;
         this.userRepository = userRepository;
         this.gameRepository = gameRepository;
+        this.lobbyEventService = lobbyEventService;
+        logger.info("LobbyService инициализирован");
     }
 
     // Создание нового лобби
@@ -47,7 +56,12 @@ public class LobbyService {
         lobby.getPlayers().add(owner);
 
         Lobby savedLobby = lobbyRepository.save(lobby);
-        return convertToDTO(savedLobby);
+        LobbyDTO lobbyDTO = convertToDTO(savedLobby);
+        
+        // Отправляем уведомление о создании лобби всем подписанным клиентам
+        lobbyEventService.notifyLobbyCreated(lobbyDTO);
+        
+        return lobbyDTO;
     }
 
     // Получение списка доступных публичных лобби
@@ -94,7 +108,12 @@ public class LobbyService {
         }
 
         Lobby updatedLobby = lobbyRepository.save(lobby);
-        return convertToDTO(updatedLobby);
+        LobbyDTO lobbyDTO = convertToDTO(updatedLobby);
+        
+        // Отправляем уведомление об обновлении лобби всем подписанным клиентам
+        lobbyEventService.notifyLobbyUpdated(lobbyDTO);
+        
+        return lobbyDTO;
     }
 
     // Выход из лобби
@@ -117,7 +136,11 @@ public class LobbyService {
         // Если это владелец лобби, то удаляем лобби или назначаем нового владельца
         if (lobby.getLobbyOwner().equals(user)) {
             if (lobby.getPlayers().isEmpty()) {
+                LobbyDTO lobbyDTO = convertToDTO(lobby);
                 lobbyRepository.delete(lobby);
+                
+                // Отправляем уведомление об удалении лобби всем подписанным клиентам
+                lobbyEventService.notifyLobbyDeleted(lobbyDTO);
                 return;
             } else {
                 // Назначаем новым владельцем первого игрока из оставшихся
@@ -131,48 +154,75 @@ public class LobbyService {
             lobby.setStatus(Lobby.LobbyStatus.WAITING);
         }
 
-        lobbyRepository.save(lobby);
+        Lobby updatedLobby = lobbyRepository.save(lobby);
+        
+        // Отправляем уведомление об обновлении лобби всем подписанным клиентам
+        lobbyEventService.notifyLobbyUpdated(convertToDTO(updatedLobby));
     }
 
     // Запуск игры из лобби
     @Transactional
     public LobbyDTO startGame(String lobbyId, String ownerUsername) {
+        logger.info("Запрос на начало игры: lobbyId={}, ownerUsername={}", lobbyId, ownerUsername);
+        
         Lobby lobby = lobbyRepository.findByLobbyID(lobbyId)
-                .orElseThrow(() -> new RuntimeException("Лобби не найдено"));
+                .orElseThrow(() -> {
+                    logger.error("Лобби не найдено: lobbyId={}", lobbyId);
+                    return new RuntimeException("Лобби не найдено");
+                });
 
         User owner = userRepository.findByUsername(ownerUsername)
-                .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+                .orElseThrow(() -> {
+                    logger.error("Пользователь не найден: username={}", ownerUsername);
+                    return new RuntimeException("Пользователь не найден");
+                });
 
         // Проверяем, является ли пользователь владельцем лобби
         if (!lobby.getLobbyOwner().equals(owner)) {
+            logger.error("Попытка начать игру не владельцем лобби: lobbyId={}, username={}", lobbyId, ownerUsername);
             throw new RuntimeException("Только владелец лобби может начать игру");
         }
 
         // Проверяем количество игроков (минимум 2 для игры)
         if (lobby.getPlayers().size() < 2) {
+            logger.error("Недостаточно игроков для начала игры: lobbyId={}, playersCount={}", 
+                    lobbyId, lobby.getPlayers().size());
             throw new RuntimeException("Для начала игры необходимо минимум 2 игрока");
         }
 
         // Создаем новую игру
+        logger.info("Создание новой игры для лобби: lobbyId={}", lobbyId);
         Game game = new Game();
         game.setLobby(lobby);
-        game.setCurrentPlayer(lobby.getPlayers().iterator().next()); // Первый игрок ходит первым
+        game.setStatus(Game.GameStatus.WAITING); // Начальный статус - ожидание готовности игроков
 
         // Создаем игровые доски для каждого игрока
+        int boardCounter = 0;
         for (User player : lobby.getPlayers()) {
             GameBoard board = new GameBoard();
             board.setGame(game);
             board.setPlayer(player);
+            board.setReady(false); // Изначально игроки не готовы
             game.getBoards().add(board);
+            boardCounter++;
+            logger.info("Создана игровая доска для игрока: lobbyId={}, username={}, boardNumber={}", 
+                    lobbyId, player.getUsername(), boardCounter);
         }
 
-        gameRepository.save(game);
+        Game savedGame = gameRepository.save(game);
+        logger.info("Игра создана: lobbyId={}, gameId={}", lobbyId, savedGame.getId());
 
-        // Устанавливаем статус IN_GAME
+        // Устанавливаем статус IN_GAME для лобби
         lobby.setStatus(Lobby.LobbyStatus.IN_GAME);
         Lobby updatedLobby = lobbyRepository.save(lobby);
+        logger.info("Лобби переведено в статус IN_GAME: lobbyId={}", lobbyId);
         
-        return convertToDTO(updatedLobby);
+        LobbyDTO lobbyDTO = convertToDTO(updatedLobby);
+        
+        // Отправляем уведомление об обновлении лобби всем подписанным клиентам
+        lobbyEventService.notifyLobbyUpdated(lobbyDTO);
+        
+        return lobbyDTO;
     }
 
     // Получение списка лобби, в которых участвует игрок
@@ -212,6 +262,7 @@ public class LobbyService {
                 .map(User::getUsername)
                 .collect(Collectors.toList()));
         dto.setCreatedAt(lobby.getCreatedAt());
+        dto.setGameId(lobby.getGame() != null ? lobby.getGame().getId().toString() : null);
         
         return dto;
     }
