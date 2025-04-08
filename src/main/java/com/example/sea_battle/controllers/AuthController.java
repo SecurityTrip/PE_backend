@@ -2,7 +2,7 @@ package com.example.sea_battle.controllers;
 
 import com.example.sea_battle.dto.SigninRequest;
 import com.example.sea_battle.dto.SignupRequest;
-import com.example.sea_battle.entities.schemas.User;
+import com.example.sea_battle.entities.User;
 import com.example.sea_battle.jwt.JwtCore;
 import com.example.sea_battle.repositories.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;

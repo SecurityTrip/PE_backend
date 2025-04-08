@@ -1,8 +1,11 @@
 package com.example.sea_battle.services;
 
 import com.example.sea_battle.dto.LobbyDTO;
-import com.example.sea_battle.entities.schemas.Lobby;
-import com.example.sea_battle.entities.schemas.User;
+import com.example.sea_battle.entities.Game;
+import com.example.sea_battle.entities.GameBoard;
+import com.example.sea_battle.entities.Lobby;
+import com.example.sea_battle.entities.User;
+import com.example.sea_battle.repositories.GameRepository;
 import com.example.sea_battle.repositories.LobbyRepository;
 import com.example.sea_battle.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,11 +21,15 @@ import java.util.stream.Collectors;
 public class LobbyService {
     private final LobbyRepository lobbyRepository;
     private final UserRepository userRepository;
+    private final GameRepository gameRepository;
 
     @Autowired
-    public LobbyService(LobbyRepository lobbyRepository, UserRepository userRepository) {
+    public LobbyService(LobbyRepository lobbyRepository, 
+                       UserRepository userRepository,
+                       GameRepository gameRepository) {
         this.lobbyRepository = lobbyRepository;
         this.userRepository = userRepository;
+        this.gameRepository = gameRepository;
     }
 
     // Создание нового лобби
@@ -145,6 +152,21 @@ public class LobbyService {
         if (lobby.getPlayers().size() < 2) {
             throw new RuntimeException("Для начала игры необходимо минимум 2 игрока");
         }
+
+        // Создаем новую игру
+        Game game = new Game();
+        game.setLobby(lobby);
+        game.setCurrentPlayer(lobby.getPlayers().iterator().next()); // Первый игрок ходит первым
+
+        // Создаем игровые доски для каждого игрока
+        for (User player : lobby.getPlayers()) {
+            GameBoard board = new GameBoard();
+            board.setGame(game);
+            board.setPlayer(player);
+            game.getBoards().add(board);
+        }
+
+        gameRepository.save(game);
 
         // Устанавливаем статус IN_GAME
         lobby.setStatus(Lobby.LobbyStatus.IN_GAME);

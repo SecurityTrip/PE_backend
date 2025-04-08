@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Entity
 @Data
-public class Ship {
+public class Shot {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -16,7 +16,13 @@ public class Ship {
 
     private int x;
     private int y;
-    private int size;
-    private boolean isHorizontal;
-    private boolean isSunk = false;
+
+    @Enumerated(EnumType.STRING)
+    private ShotResult result;
+
+    public enum ShotResult {
+        MISS,
+        HIT,
+        SUNK
+    }
 } 

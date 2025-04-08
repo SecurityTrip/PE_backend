@@ -1,14 +1,34 @@
 package com.example.sea_battle.entities;
 
-public class GameBoard {
-    private boolean[][] board;
+import jakarta.persistence.*;
+import lombok.Data;
+import lombok.ToString;
 
-    GameBoard() {
-        this.board = new boolean[10][10];
-        for (int i = 0; i < 10; i++) {
-            for (int j = 0; j < 10; j++) {
-                board[i][j] = false;
-            }
-        }
-    }
-}
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Data
+public class GameBoard {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "game_id")
+    private Game game;
+
+    @ManyToOne
+    @JoinColumn(name = "player_id")
+    private User player;
+
+    @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    private List<Ship> ships = new ArrayList<>();
+
+    @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    private List<Shot> shots = new ArrayList<>();
+
+    private int size = 10; // Стандартный размер поля 10x10
+} 

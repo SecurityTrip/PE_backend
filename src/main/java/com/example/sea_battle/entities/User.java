@@ -1,4 +1,4 @@
-package com.example.sea_battle.entities.schemas;
+package com.example.sea_battle.entities;
 
 import jakarta.persistence.*;
 import lombok.Data;

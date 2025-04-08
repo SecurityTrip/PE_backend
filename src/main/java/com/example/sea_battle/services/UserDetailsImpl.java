@@ -1,6 +1,6 @@
 package com.example.sea_battle.services;
 
-import com.example.sea_battle.entities.schemas.User;
+import com.example.sea_battle.entities.User;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
